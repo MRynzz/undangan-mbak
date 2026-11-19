@@ -783,11 +783,13 @@ const CONFIG = {
       jam: "08:00 WIB - Selesai",
       tempat: "Desa Sinar Harapan RT/RW 01/01",
       alamat: "Desa Sinar Harapan RT/RW 01/01, Kecamatan Tungkal Jaya, Kabupaten Musi Banyuasin, Sumatera Selatan",
-      maps: "https://maps.app.goo.gl/ZPwUQifNWvMQdtz87",   // Tombol "Lihat Titik Lokasi" (link Google Maps)
-      // TITIK KOORDINAT (opsional, disarankan agar rute tepat di titik acara).
-      // Cara: buka link Google Maps di atas > tekan lama pada pin > salin angka koordinat,
-      // contoh: "-2.123456,103.123456". Kalau diisi, tombol "Rute ke Lokasi" memakai titik ini
-      // dan peta kecil ikut pas di titik tersebut. Kalau kosong, rute memakai teks alamat.
+      maps: "https://goo.gl/maps/CiSinKNM77tReU4H6",   // Tombol "Lihat Titik Lokasi" (link Google Maps)
+      // KOORDINAT titik acara (sangat disarankan, supaya tombol "Rute ke Lokasi" langsung menampilkan rute).
+      // Cara paling mudah: buka link Google Maps di atas lewat komputer, tunggu sampai alamat di
+      // browser berubah panjang, salin SELURUH alamat itu lalu tempel di bawah, contoh:
+      //   koordinat: "https://www.google.com/maps/place/.../@-2.12,103.12,17z/data=!3d-2.12!4d103.12",
+      // Atau tulis angkanya saja: koordinat: "-2.123456,103.123456"
+      // Kalau kosong, tombol rute hanya membuka titik lokasi di Google Maps (tamu tinggal tekan "Rute").
       koordinat: "",
       // Peta kecil yang tampil di undangan (dipakai bila koordinat kosong).
       peta: "https://www.google.com/maps?q=Desa+Sinar+Harapan,+Tungkal+Jaya,+Musi+Banyuasin&hl=id&z=14&output=embed"
@@ -799,7 +801,7 @@ const CONFIG = {
       jam: "08:00 WIB - Selesai",
       tempat: "Desa Sinar Harapan RT/RW 01/01",
       alamat: "Desa Sinar Harapan RT/RW 01/01, Kecamatan Tungkal Jaya, Kabupaten Musi Banyuasin, Sumatera Selatan",
-      maps: "https://maps.app.goo.gl/ZPwUQifNWvMQdtz87",
+      maps: "https://goo.gl/maps/CiSinKNM77tReU4H6",
       koordinat: "",
       peta: "https://www.google.com/maps?q=Desa+Sinar+Harapan,+Tungkal+Jaya,+Musi+Banyuasin&hl=id&z=14&output=embed"
     }
@@ -1059,14 +1061,27 @@ function renderCouple() {
 }
 
 /* ---------- Render: acara & peta ---------- */
-// Link rute Google Maps: langsung membuka navigasi dari posisi tamu ke lokasi acara.
-// Tujuan = koordinat (jika diisi), kalau tidak memakai teks alamat.
+// Ambil "lat,lng" dari teks koordinat atau dari alamat panjang Google Maps.
+function ambilKoordinat(teks) {
+  const t = String(teks || '').trim();
+  if (!t) return '';
+  const pola = [
+    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,            // ...!3d-2.12!4d103.12
+    /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,                // .../@-2.12,103.12,17z
+    /[?&](?:q|query|ll|destination)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
+    /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/        // -2.12,103.12
+  ];
+  for (const re of pola) { const m = t.match(re); if (m) return m[1] + ',' + m[2]; }
+  return '';
+}
+// Link rute Google Maps: langsung membuka navigasi dari posisi tamu ke titik acara.
+// Tanpa koordinat, tombol membuka link titik lokasi (a.maps) agar tidak gagal.
 function ruteUrl(a) {
-  const tujuan = (a.koordinat || '').trim() || a.alamat || a.tempat;
-  return 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(tujuan);
+  const k = ambilKoordinat(a.koordinat);
+  return k ? 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(k) : a.maps;
 }
 function petaUrl(a) {
-  const k = (a.koordinat || '').trim();
+  const k = ambilKoordinat(a.koordinat);
   return k ? 'https://www.google.com/maps?q=' + encodeURIComponent(k) + '&hl=id&z=16&output=embed' : a.peta;
 }
 function renderEvents() {
@@ -1081,7 +1096,7 @@ function renderEvents() {
       <p class="e-addr">${esc(a.alamat)}</p>
       <div class="e-btns">
         <a class="btn btn-maroon" href="${esc(ruteUrl(a))}" target="_blank" rel="noopener">${ic('route')}Rute ke Lokasi</a>
-        <a class="btn btn-line" href="${esc(a.maps)}" target="_blank" rel="noopener">${ic('pin')}Lihat Titik Lokasi</a>
+        ${ruteUrl(a) !== a.maps ? `<a class="btn btn-line" href="${esc(a.maps)}" target="_blank" rel="noopener">${ic('pin')}Lihat Titik Lokasi</a>` : ''}
       </div>
       ${peta ? `<div class="map"><iframe src="${esc(peta)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Peta lokasi ${esc(a.judul)}" allowfullscreen></iframe></div>` : ''}
     </article>`;
